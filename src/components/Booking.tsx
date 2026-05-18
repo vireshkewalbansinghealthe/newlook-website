@@ -187,10 +187,26 @@ export default function Booking() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleDateChange = async (date: string) => {
+    setForm(prev => ({ ...prev, date, time: "" }));
+    setLoadingSlots(true);
+    try {
+      const res = await fetch(`/api/availability?date=${date}`);
+      const data = await res.json();
+      setBookedSlots(data.bookedSlots ?? []);
+    } catch {
+      setBookedSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -285,28 +301,47 @@ export default function Booking() {
 
               {/* Calendar */}
               <InputField label="Kies een Datum" required>
-                <Calendar selected={form.date} onChange={date => setForm(prev => ({ ...prev, date }))} />
+                <Calendar selected={form.date} onChange={handleDateChange} />
               </InputField>
 
               {/* Time slots */}
               <InputField label="Tijdstip" required>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {timeSlots.map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setForm(prev => ({ ...prev, time: t }))}
-                      className={`py-2.5 rounded-xl text-xs font-semibold border transition-all duration-150 ${
-                        form.time === t
-                          ? "bg-[#D4AF37] border-[#D4AF37] text-black shadow-[0_0_10px_rgba(212,175,55,0.4)]"
-                          : "bg-[#0f0f0f] border-white/10 text-gray-400 hover:border-[#D4AF37]/40 hover:text-[#D4AF37]"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                {/* Hidden input for validation */}
+                {loadingSlots ? (
+                  <div className="flex items-center gap-2 text-gray-500 text-sm py-2">
+                    <svg className="animate-spin w-4 h-4 text-[#D4AF37]" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Beschikbaarheid laden...
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    {timeSlots.map(t => {
+                      const booked = bookedSlots.includes(t);
+                      const selected = form.time === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          disabled={booked}
+                          onClick={() => !booked && setForm(prev => ({ ...prev, time: t }))}
+                          className={`py-2.5 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+                            booked
+                              ? "bg-[#0f0f0f] border-white/5 text-gray-700 cursor-not-allowed line-through"
+                              : selected
+                              ? "bg-[#D4AF37] border-[#D4AF37] text-black shadow-[0_0_10px_rgba(212,175,55,0.4)]"
+                              : "bg-[#0f0f0f] border-white/10 text-gray-400 hover:border-[#D4AF37]/40 hover:text-[#D4AF37]"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {bookedSlots.length > 0 && !loadingSlots && (
+                  <p className="text-xs text-gray-600 mt-2">Doorgestreepte tijden zijn al geboekt.</p>
+                )}
                 <input type="hidden" name="time" value={form.time} required />
               </InputField>
 
