@@ -95,23 +95,6 @@ export default function About() {
               ))}
             </div>
 
-            {/* Video preview */}
-            <div className="rounded-2xl overflow-hidden border border-[#D4AF37]/20">
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="w-full h-48 object-cover"
-              >
-                <source src="/salon-video.mp4" type="video/mp4" />
-              </video>
-              <div className="p-4 bg-[#1a1a1a]">
-                <p className="text-[#D4AF37] text-xs uppercase tracking-widest font-medium">
-                  New Look Kapsalon · Almere
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>

@@ -27,27 +27,61 @@ export async function POST(req: NextRequest) {
 
     const calendar = getCalendar();
 
-    await calendar.events.insert({
-      calendarId: CALENDAR_ID,
-      requestBody: {
-        summary: `✂️ ${data.service} – ${data.name}`,
-        description: [
-          `Klant: ${data.name}`,
-          `Telefoon: ${data.phone}`,
-          data.email ? `E-mail: ${data.email}` : "",
-          `Kapper: ${data.barber}`,
-          `Service: ${data.service}`,
-          data.message ? `\nOpmerking: ${data.message}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        start: { dateTime: start.toISOString(), timeZone: "Europe/Amsterdam" },
-        end: { dateTime: end.toISOString(), timeZone: "Europe/Amsterdam" },
-        colorId: "5",
-      },
-    });
+    // Google Calendar – non-fatal: log error but continue
+    try {
+      await calendar.events.insert({
+        calendarId: CALENDAR_ID,
+        requestBody: {
+          summary: `Nieuwe afspraak: ${data.service} - ${data.name}`,
+          description: [
+            `Klant: ${data.name}`,
+            `Telefoon: ${data.phone}`,
+            data.email ? `E-mail: ${data.email}` : "",
+            `Kapper: ${data.barber}`,
+            `Service: ${data.service}`,
+            data.message ? `\nOpmerking: ${data.message}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          start: { dateTime: start.toISOString(), timeZone: "Europe/Amsterdam" },
+          end: { dateTime: end.toISOString(), timeZone: "Europe/Amsterdam" },
+          colorId: "5",
+        },
+      });
+    } catch (calErr: unknown) {
+      const msg = calErr instanceof Error ? calErr.message : String(calErr);
+      console.error("[calendar]", msg);
+    }
 
-    return NextResponse.json({ success: true, message: "Afspraak aangemaakt in Google Calendar." });
+    // Push notification via ntfy.sh – ASCII-only headers to avoid ByteString error
+    const ntfyTopic = process.env.NTFY_TOPIC;
+    if (ntfyTopic) {
+      const dd = String(day).padStart(2, "0");
+      const mm = String(month).padStart(2, "0");
+      const body = [
+        `Klant: ${data.name}`,
+        `Tel: ${data.phone}`,
+        `Kapper: ${data.barber}`,
+        `Service: ${data.service}`,
+        `Datum: ${dd}-${mm}-${year} om ${data.time}`,
+        data.message ? `Opmerking: ${data.message}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      await fetch(`https://ntfy.sh/${ntfyTopic}`, {
+        method: "POST",
+        headers: {
+          "Title": "Nieuwe Afspraak - New Look Almere",
+          "Priority": "high",
+          "Tags": "calendar,scissors",
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+        body,
+      }).catch((err) => console.error("[ntfy]", err));
+    }
+
+    return NextResponse.json({ success: true, message: "Afspraak ontvangen." });
   } catch (err) {
     console.error("[appointments]", err);
     return NextResponse.json(
