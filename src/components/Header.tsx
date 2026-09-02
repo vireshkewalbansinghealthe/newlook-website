@@ -203,7 +203,7 @@ export default function Header() {
           <div className="pt-2 space-y-1.5">
             <p className="text-xs text-gray-600 flex items-center gap-2">
               <span className="text-[#D4AF37]/60">📍</span>
-              Markerkant 263a, Almere
+              Markerkant 10 132D, 1316 AL Almere
             </p>
             <p className="text-xs text-gray-600 flex items-center gap-2">
               <span className="text-[#D4AF37]/60">🕐</span>

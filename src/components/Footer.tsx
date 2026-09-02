@@ -90,12 +90,12 @@ export default function Footer() {
                 <span className="text-[#D4AF37] mt-0.5">📍</span>
                 <div>
                   <a
-                    href="https://maps.google.com/?q=Markerkant+263a+Almere"
+                    href="https://maps.google.com/?q=Markerkant+10+132D,+1316+AL+Almere"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-400 hover:text-[#D4AF37] text-sm transition-colors leading-relaxed"
                   >
-                    Markerkant 263a<br />Almere
+                    Markerkant 10 132D<br />1316 AL Almere
                   </a>
                 </div>
               </li>
@@ -142,11 +142,11 @@ export default function Footer() {
                 Onze Locatie
               </p>
               <h3 className="text-white font-semibold text-lg">
-                Markerkant 263a, Almere
+                Markerkant 10 132D, 1316 AL Almere
               </h3>
             </div>
             <a
-              href="https://maps.google.com/?q=Markerkant+263a+Almere"
+              href="https://maps.google.com/?q=Markerkant+10+132D,+1316+AL+Almere"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#F0D060] text-black font-bold px-5 py-2.5 rounded-full text-xs uppercase tracking-wider transition-all duration-200 flex-shrink-0"
@@ -159,14 +159,14 @@ export default function Footer() {
           </div>
           <div className="rounded-2xl overflow-hidden border border-[#D4AF37]/20 shadow-[0_0_30px_rgba(212,175,55,0.05)]">
             <iframe
-              src="https://maps.google.com/maps?q=Markerkant+263a,+Almere&output=embed&z=16"
+              src="https://maps.google.com/maps?q=52.3877447,5.2196849&output=embed&z=17"
               width="100%"
               height="320"
               style={{ border: 0 }}
               allowFullScreen
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              title="New Look Kapsalon Almere – Markerkant 263a"
+              title="New Look Kapsalon Almere – Markerkant 10 132D"
             />
           </div>
         </div>

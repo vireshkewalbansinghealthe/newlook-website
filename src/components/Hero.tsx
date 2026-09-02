@@ -57,7 +57,7 @@ export default function Hero() {
                 Bel Ons
               </a>
               <a
-                href="https://maps.google.com/?q=Markerkant+263a+Almere"
+                href="https://maps.google.com/?q=Markerkant+10+132D,+1316+AL+Almere"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold px-5 py-3 rounded-full text-sm transition-all duration-200 backdrop-blur-sm"
@@ -86,7 +86,7 @@ export default function Hero() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-black text-xs font-bold uppercase tracking-widest">
           <span>Kapsalon New Look Almere</span>
           <span className="hidden sm:block opacity-40">·</span>
-          <span>Markerkant 263a</span>
+          <span>Markerkant 10 132D</span>
           <span className="hidden sm:block opacity-40">·</span>
           <span>06 42 54 48 98</span>
           <span className="hidden sm:block opacity-40">·</span>
