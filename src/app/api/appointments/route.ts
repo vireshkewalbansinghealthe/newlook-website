@@ -22,12 +22,22 @@ export async function POST(req: NextRequest) {
 
     const [year, month, day] = data.date.split("-").map(Number);
     const [hour, minute] = data.time.split(":").map(Number);
-    const start = new Date(year, month - 1, day, hour, minute);
-    const end = new Date(start.getTime() + 30 * 60 * 1000);
+
+    // Kloktijd in Europe/Amsterdam. Zonder offset gebruikt Google het timeZone-veld,
+    // zodat de serverklok (UTC op Vercel) de tijd niet verschuift.
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const startLocal = `${data.date}T${pad(hour)}:${pad(minute)}:00`;
+    const endParts = new Date(Date.UTC(year, month - 1, day, hour, minute) + 30 * 60 * 1000);
+    const endLocal =
+      `${endParts.getUTCFullYear()}-${pad(endParts.getUTCMonth() + 1)}-${pad(endParts.getUTCDate())}` +
+      `T${pad(endParts.getUTCHours())}:${pad(endParts.getUTCMinutes())}:00`;
 
     const calendar = getCalendar();
 
-    // Google Calendar – non-fatal: log error but continue
+    let calendarOk = false;
+    let notifyOk = false;
+
+    // Google Calendar
     try {
       await calendar.events.insert({
         calendarId: CALENDAR_ID,
@@ -43,11 +53,12 @@ export async function POST(req: NextRequest) {
           ]
             .filter(Boolean)
             .join("\n"),
-          start: { dateTime: start.toISOString(), timeZone: "Europe/Amsterdam" },
-          end: { dateTime: end.toISOString(), timeZone: "Europe/Amsterdam" },
+          start: { dateTime: startLocal, timeZone: "Europe/Amsterdam" },
+          end: { dateTime: endLocal, timeZone: "Europe/Amsterdam" },
           colorId: "5",
         },
       });
+      calendarOk = true;
     } catch (calErr: unknown) {
       const msg = calErr instanceof Error ? calErr.message : String(calErr);
       console.error("[calendar]", msg);
@@ -69,16 +80,32 @@ export async function POST(req: NextRequest) {
         .filter(Boolean)
         .join("\n");
 
-      await fetch(`https://ntfy.sh/${ntfyTopic}`, {
-        method: "POST",
-        headers: {
-          "Title": "Nieuwe Afspraak - New Look Almere",
-          "Priority": "high",
-          "Tags": "calendar,scissors",
-          "Content-Type": "text/plain; charset=utf-8",
-        },
-        body,
-      }).catch((err) => console.error("[ntfy]", err));
+      try {
+        const res = await fetch(`https://ntfy.sh/${ntfyTopic}`, {
+          method: "POST",
+          headers: {
+            "Title": "Nieuwe Afspraak - New Look Almere",
+            "Priority": "high",
+            "Tags": "calendar,scissors",
+            "Content-Type": "text/plain; charset=utf-8",
+          },
+          body,
+        });
+        notifyOk = res.ok;
+        if (!res.ok) console.error("[ntfy]", res.status, await res.text());
+      } catch (err) {
+        console.error("[ntfy]", err);
+      }
+    } else {
+      console.error("[ntfy] NTFY_TOPIC ontbreekt");
+    }
+
+    // Als geen van beide kanalen werkte is de afspraak nergens aangekomen.
+    if (!calendarOk && !notifyOk) {
+      return NextResponse.json(
+        { error: "Kon afspraak niet vastleggen. Bel ons direct om je afspraak te bevestigen." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true, message: "Afspraak ontvangen." });

@@ -6,15 +6,32 @@ export async function GET(req: NextRequest) {
   if (!date) return NextResponse.json({ bookedSlots: [] });
 
   try {
-    const dayStart = new Date(`${date}T00:00:00+02:00`);
-    const dayEnd = new Date(`${date}T23:59:59+02:00`);
+    // Ruime marge rond de dag; de exacte dag wordt hieronder in Amsterdamse tijd gefilterd,
+    // zodat zomer- en wintertijd allebei goed gaan.
+    const utcMidnight = new Date(`${date}T00:00:00Z`).getTime();
+    const timeMin = new Date(utcMidnight - 2 * 60 * 60 * 1000);
+    const timeMax = new Date(utcMidnight + 26 * 60 * 60 * 1000);
 
     const calendar = getCalendar();
     const res = await calendar.events.list({
       calendarId: CALENDAR_ID,
-      timeMin: dayStart.toISOString(),
-      timeMax: dayEnd.toISOString(),
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
       singleEvents: true,
+    });
+
+    // Formatteren in Europe/Amsterdam i.p.v. de serverklok (UTC op Vercel).
+    const dayFmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Amsterdam",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const timeFmt = new Intl.DateTimeFormat("nl-NL", {
+      timeZone: "Europe/Amsterdam",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
     });
 
     const bookedSlots: string[] = [];
@@ -22,9 +39,8 @@ export async function GET(req: NextRequest) {
       const start = event.start?.dateTime;
       if (!start) continue;
       const d = new Date(start);
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      bookedSlots.push(`${hh}:${mm}`);
+      if (dayFmt.format(d) !== date) continue;
+      bookedSlots.push(timeFmt.format(d));
     }
 
     return NextResponse.json({ bookedSlots });
