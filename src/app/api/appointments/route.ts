@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCalendar, CALENDAR_ID } from "@/lib/google-calendar";
+import { stuurMail } from "@/lib/mail";
+import { tekenEventId } from "@/lib/confirm-token";
 
 type AppointmentData = {
   name: string;
   phone: string;
-  email?: string;
+  email: string;
   barber: string;
   service: string;
   date: string;
@@ -16,7 +18,7 @@ export async function POST(req: NextRequest) {
   try {
     const data: AppointmentData = await req.json();
 
-    if (!data.name || !data.phone || !data.barber || !data.service || !data.date || !data.time) {
+    if (!data.name || !data.phone || !data.email || !data.barber || !data.service || !data.date || !data.time) {
       return NextResponse.json({ error: "Vul alle verplichte velden in." }, { status: 400 });
     }
 
@@ -34,12 +36,13 @@ export async function POST(req: NextRequest) {
 
     const calendar = getCalendar();
 
+    let eventId: string | null = null;
     let calendarOk = false;
     let notifyOk = false;
 
     // Google Calendar
     try {
-      await calendar.events.insert({
+      const inserted = await calendar.events.insert({
         calendarId: CALENDAR_ID,
         requestBody: {
           summary: `Nieuwe afspraak: ${data.service} - ${data.name}`,
@@ -56,12 +59,28 @@ export async function POST(req: NextRequest) {
           start: { dateTime: startLocal, timeZone: "Europe/Amsterdam" },
           end: { dateTime: endLocal, timeZone: "Europe/Amsterdam" },
           colorId: "5",
+          extendedProperties: {
+            private: {
+              klantNaam: data.name,
+              klantEmail: data.email,
+              klantKapper: data.barber,
+              klantService: data.service,
+            },
+          },
         },
       });
+      eventId = inserted.data.id ?? null;
       calendarOk = true;
     } catch (calErr: unknown) {
       const msg = calErr instanceof Error ? calErr.message : String(calErr);
       console.error("[calendar]", msg);
+    }
+
+    // Ontvangstbevestiging naar de klant. Niet fataal: de afspraak staat al genoteerd.
+    try {
+      await stuurMail(data, "ontvangst");
+    } catch (mailErr) {
+      console.error("[mail-ontvangst]", mailErr);
     }
 
     // Push notification via ntfy.sh – ASCII-only headers to avoid ByteString error
@@ -80,16 +99,32 @@ export async function POST(req: NextRequest) {
         .filter(Boolean)
         .join("\n");
 
+      // JSON-formaat i.p.v. headers, want een emoji in een header is geen geldige ASCII.
+      const siteUrl = process.env.SITE_URL ?? "https://www.newlookalmere.nl";
+      const acties =
+        eventId && process.env.CONFIRM_SECRET
+          ? [
+              {
+                action: "http",
+                label: "\u{1F44D} Bevestigen",
+                url: `${siteUrl}/api/appointments/confirm?id=${encodeURIComponent(eventId)}&sig=${tekenEventId(eventId)}`,
+                method: "POST",
+              },
+            ]
+          : [];
+
       try {
-        const res = await fetch(`https://ntfy.sh/${ntfyTopic}`, {
+        const res = await fetch("https://ntfy.sh/", {
           method: "POST",
-          headers: {
-            "Title": "Nieuwe Afspraak - New Look Almere",
-            "Priority": "high",
-            "Tags": "calendar,scissors",
-            "Content-Type": "text/plain; charset=utf-8",
-          },
-          body,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic: ntfyTopic,
+            title: "Nieuwe Afspraak - New Look Almere",
+            message: body,
+            priority: 4,
+            tags: ["calendar", "scissors"],
+            actions: acties,
+          }),
         });
         notifyOk = res.ok;
         if (!res.ok) console.error("[ntfy]", res.status, await res.text());

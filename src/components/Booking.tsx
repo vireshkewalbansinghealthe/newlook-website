@@ -257,7 +257,7 @@ export default function Booking() {
               </div>
               <h3 className="font-playfair text-3xl font-bold text-white mb-3">Afspraak Ontvangen!</h3>
               <p className="text-gray-400 mb-8 max-w-sm mx-auto">
-                Bedankt! Wij nemen zo snel mogelijk contact met je op ter bevestiging.
+                Bedankt! Je krijgt nu een mailtje van ons. Zodra we je afspraak bevestigen, laten we dat per mail weten.
               </p>
               <button
                 onClick={() => setStatus("idle")}
@@ -279,8 +279,8 @@ export default function Booking() {
               </div>
 
               {/* Email */}
-              <InputField label="E-mailadres">
-                <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="jouw@email.nl" className={inputClass} />
+              <InputField label="E-mailadres" required>
+                <input type="email" name="email" value={form.email} onChange={handleChange} required placeholder="jouw@email.nl" className={inputClass} />
               </InputField>
 
               {/* Barber */}
