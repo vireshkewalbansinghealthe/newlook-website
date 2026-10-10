@@ -66,23 +66,32 @@ export async function stuurMail(a: Afspraak, soort: keyof typeof teksten) {
 
   const text = [t.kop, "", t.intro(a), "", ...regels.map(([k, v]) => `${k}: ${v}`), "", t.slot].join("\n");
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: process.env.MAIL_FROM ?? "New Look Kapsalon Almere <noreply@newlookalmere.nl>",
-      to: [a.email],
-      // De kapsalon krijgt een kopie van alles, en antwoorden van de klant
-      // komen daar ook terecht (er wordt verstuurd vanaf een noreply-adres).
-      ...(salon ? { bcc: [salon], reply_to: salon } : {}),
-      subject: t.subject,
-      text,
-      html,
-    }),
-  });
+  async function verstuur(velden: Record<string, unknown>) {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: process.env.MAIL_FROM ?? "New Look Kapsalon Almere <noreply@newlookalmere.nl>",
+        text,
+        html,
+        ...velden,
+      }),
+    });
+    if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
+  }
 
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
+  // Twee losse verzendingen in plaats van een bcc: gaat het mis met het adres
+  // van de klant, dan krijgt de kapsalon zijn eigen mail nog steeds.
+  const [klant, kapsalon] = await Promise.allSettled([
+    verstuur({ to: [a.email], subject: t.subject, ...(salon ? { reply_to: salon } : {}) }),
+    salon
+      ? verstuur({ to: [salon], subject: `${t.subject} - ${a.name}`, reply_to: a.email })
+      : Promise.resolve(),
+  ]);
+
+  if (kapsalon.status === "rejected") console.error("[mail-kapsalon]", kapsalon.reason);
+  if (klant.status === "rejected") throw klant.reason;
 }

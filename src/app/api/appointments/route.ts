@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Vul alle verplichte velden in." }, { status: 400 });
     }
 
+    // Een onbruikbaar adres hier tegenhouden, anders mislukt de mail pas bij Resend.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      return NextResponse.json({ error: "Vul een geldig e-mailadres in." }, { status: 400 });
+    }
+
     const [year, month, day] = data.date.split("-").map(Number);
     const [hour, minute] = data.time.split(":").map(Number);
 
